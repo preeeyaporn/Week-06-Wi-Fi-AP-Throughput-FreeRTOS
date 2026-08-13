@@ -14,7 +14,7 @@ static const char *TAG = "SMART_ATTENDANCE";
 
 #define AP_SSID          "CLASSROOM_ATTENDANCE_AP"
 #define AP_PASS          "12345678"
-#define RSSI_THRESHOLD   -60
+#define RSSI_THRESHOLD   -60  // dBm threshold for proximity check
 
 typedef struct {
     char mac_str[18];
@@ -26,6 +26,7 @@ typedef struct {
 static student_record_t s_records[5];
 static int s_student_count = 0;
 
+// HTTP GET Handler for Attendance Web Dashboard
 static esp_err_t http_attendance_html_handler(httpd_req_t *req) {
     char resp[1024];
     int len = snprintf(resp, sizeof(resp),
@@ -44,7 +45,7 @@ static esp_err_t http_attendance_html_handler(httpd_req_t *req) {
         "<table><tr><th>Device MAC</th><th>RSSI (dBm)</th><th>Proximity Status</th></tr>");
 
     for (int i = 0; i < s_student_count; i++) {
-        char status_str[32];
+        char status_str[64]; // แก้ไขขนาดจาก 32 เป็น 64 เพื่อรองรับข้อความ HTML
         if (s_records[i].rssi >= RSSI_THRESHOLD) {
             snprintf(status_str, sizeof(status_str), "<font color='green'><b>NEAR (Valid)</b></font>");
         } else {
@@ -77,14 +78,14 @@ static void start_web_server(void) {
 }
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                               int32_t event_id, void* event_data) {
+                            int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
         if (s_student_count < 5) {
             snprintf(s_records[s_student_count].mac_str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
                      event->mac[0], event->mac[1], event->mac[2],
                      event->mac[3], event->mac[4], event->mac[5]);
-            s_records[s_student_count].rssi = -45;
+            s_records[s_student_count].rssi = -45; // Simulated initial near RSSI
             s_records[s_student_count].checked_in = true;
             s_student_count++;
         }
